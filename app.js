@@ -15,9 +15,8 @@ app.get("/", (req, res) => {
   res.status(200).json({ msg: "Codedly Dating" });
 });
 
-// Route to verify payment
 app.post("/api/verify-payment", async (req, res) => {
-  const { reference } = req.body;
+  const { reference, userId } = req.body;
 
   try {
     // Verify payment with Paystack
@@ -32,7 +31,17 @@ app.post("/api/verify-payment", async (req, res) => {
     );
 
     if (response.data.data.status === "success") {
-      res.status(200).send("Payment verified successfully");
+      // Update Firestore user document with subscription details
+      const expiresAt = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      ); // 30 days from now
+
+      await db.collection("users").doc(userId).update({
+        premium: true,
+        expiresAt,
+      });
+
+      res.status(200).send("Subscription updated successfully");
     } else {
       res.status(400).send("Payment verification failed");
     }
