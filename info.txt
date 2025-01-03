@@ -1,0 +1,60 @@
+// Update Firestore user document with subscription details
+      const expiresAt = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      ); // 30 days from now
+
+      await db.collection("users").doc(userId).update({
+        premium: true,
+        expiresAt,
+      });
+
+const { reference, userId } = req.body;
+
+const { admin, db } = require("./firebaseAdmin");
+
+// Route to initialize a subscription
+app.post("/api/initialize-subscription", async (req, res) => {
+  const { email, amount, plan } = req.body;
+
+  const params = JSON.stringify({
+    email: email,
+    amount: amount,
+    plan: plan,
+  });
+
+  const options = {
+    hostname: "api.paystack.co",
+    port: 443,
+    path: "/transaction/initialize",
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+  };
+
+  const reqPaystack = https
+    .request(options, (paystackRes) => {
+      let data = "";
+
+      paystackRes.on("data", (chunk) => {
+        data += chunk;
+      });
+
+      paystackRes.on("end", () => {
+        const response = JSON.parse(data);
+        if (response.status) {
+          res.status(200).json(response.data);
+        } else {
+          res.status(400).json({ error: response.message });
+        }
+      });
+    })
+    .on("error", (error) => {
+      console.error("Error initializing subscription:", error);
+      res.status(500).send("Internal Server Error");
+    });
+
+  reqPaystack.write(params);
+  reqPaystack.end();
+});
