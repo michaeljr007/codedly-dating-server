@@ -20,11 +20,19 @@ const BACKBLAZE_ID = process.env.BACKBLAZE_ID;
 const BACKBLAZE_KEY = process.env.BACKBLAZE_KEY;
 const BUCKET_ID = process.env.BACKBLAZE_BUCKET;
 
-app.post("/upload", async (req, res) => {
-  try {
-    const { fileName, fileContent } = req.body;
+const multer = require("multer");
+const upload = multer();
 
-    // Step 1: Authorize
+app.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    const file = req.file; // File from the request
+    const fileName = req.body.fileName || file.originalname;
+
+    if (!file) {
+      return res.status(400).send("No file uploaded.");
+    }
+
+    // Step 1: Authorize with Backblaze
     const authResponse = await axios.get(
       "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
       {
@@ -48,20 +56,22 @@ app.post("/upload", async (req, res) => {
       uploadUrlResponse.data;
 
     // Step 3: Upload File
-    const uploadResponse = await axios.post(
-      uploadUrl,
-      { file: fileContent, fileName },
-      {
-        headers: {
-          Authorization: uploadAuthToken,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const uploadResponse = await axios.post(uploadUrl, file.buffer, {
+      headers: {
+        Authorization: uploadAuthToken,
+        "Content-Type": file.mimetype,
+        "X-Bz-File-Name": encodeURIComponent(fileName),
+        "X-Bz-Content-Sha1": "do_not_verify", // Backblaze requires this
+      },
+    });
 
-    res.status(200).json({ fileUrl: uploadResponse.data });
+    // Step 4: Send response with file URL
+    const fileUrl = `${
+      authResponse.data.downloadUrl
+    }/file/${BUCKET_ID}/${encodeURIComponent(fileName)}`;
+    res.status(200).json({ fileUrl });
   } catch (error) {
-    console.error("Error uploading file:", error);
+    console.error("Error uploading file:", error.response?.data || error);
     res.status(500).send("Failed to upload file.");
   }
 });
