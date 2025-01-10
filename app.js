@@ -15,6 +15,57 @@ app.get("/", (req, res) => {
   res.status(200).json({ msg: "Codedly Dating" });
 });
 
+// image upload
+const BACKBLAZE_ID = process.env.BACKBLAZE_ID;
+const BACKBLAZE_KEY = process.env.BACKBLAZE_KEY;
+const BUCKET_ID = process.env.BACKBLAZE_BUCKET;
+
+app.post("/upload", async (req, res) => {
+  try {
+    const { fileName, fileContent } = req.body;
+
+    // Step 1: Authorize
+    const authResponse = await axios.get(
+      "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
+      {
+        auth: {
+          username: BACKBLAZE_ID,
+          password: BACKBLAZE_KEY,
+        },
+      }
+    );
+
+    const { authorizationToken, apiUrl } = authResponse.data;
+
+    // Step 2: Get Upload URL
+    const uploadUrlResponse = await axios.post(
+      `${apiUrl}/b2api/v2/b2_get_upload_url`,
+      { bucketId: BUCKET_ID },
+      { headers: { Authorization: authorizationToken } }
+    );
+
+    const { uploadUrl, authorizationToken: uploadAuthToken } =
+      uploadUrlResponse.data;
+
+    // Step 3: Upload File
+    const uploadResponse = await axios.post(
+      uploadUrl,
+      { file: fileContent, fileName },
+      {
+        headers: {
+          Authorization: uploadAuthToken,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    res.status(200).json({ fileUrl: uploadResponse.data });
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    res.status(500).send("Failed to upload file.");
+  }
+});
+
 app.post("/api/verify-payment", async (req, res) => {
   const { reference, userId } = req.body;
 
