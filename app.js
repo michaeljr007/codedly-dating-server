@@ -15,67 +15,6 @@ app.get("/", (req, res) => {
   res.status(200).json({ msg: "Codedly Dating" });
 });
 
-// image upload
-const BACKBLAZE_ID = process.env.BACKBLAZE_ID;
-const BACKBLAZE_KEY = process.env.BACKBLAZE_KEY;
-const BUCKET_ID = process.env.BACKBLAZE_BUCKET;
-
-const multer = require("multer");
-const upload = multer();
-
-app.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    const file = req.file; // File from the request
-    const fileName = req.body.fileName || file.originalname;
-
-    if (!file) {
-      return res.status(400).send("No file uploaded.");
-    }
-
-    // Step 1: Authorize with Backblaze
-    const authResponse = await axios.get(
-      "https://api.backblazeb2.com/b2api/v2/b2_authorize_account",
-      {
-        auth: {
-          username: BACKBLAZE_ID,
-          password: BACKBLAZE_KEY,
-        },
-      }
-    );
-
-    const { authorizationToken, apiUrl } = authResponse.data;
-
-    // Step 2: Get Upload URL
-    const uploadUrlResponse = await axios.post(
-      `${apiUrl}/b2api/v2/b2_get_upload_url`,
-      { bucketId: BUCKET_ID },
-      { headers: { Authorization: authorizationToken } }
-    );
-
-    const { uploadUrl, authorizationToken: uploadAuthToken } =
-      uploadUrlResponse.data;
-
-    // Step 3: Upload File
-    const uploadResponse = await axios.post(uploadUrl, file.buffer, {
-      headers: {
-        Authorization: uploadAuthToken,
-        "Content-Type": file.mimetype,
-        "X-Bz-File-Name": encodeURIComponent(fileName),
-        "X-Bz-Content-Sha1": "do_not_verify", // Backblaze requires this
-      },
-    });
-
-    // Step 4: Send response with file URL
-    const fileUrl = `${
-      authResponse.data.downloadUrl
-    }/file/${BUCKET_ID}/${encodeURIComponent(fileName)}`;
-    res.status(200).json({ fileUrl });
-  } catch (error) {
-    console.error("Error uploading file:", error.response?.data || error);
-    res.status(500).send("Failed to upload file.");
-  }
-});
-
 app.post("/api/verify-payment", async (req, res) => {
   const { reference, userId } = req.body;
 
