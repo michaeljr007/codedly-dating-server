@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Grid = require("gridfs-stream");
-const GridFsStorage = require("multer-gridfs-storage");
+const { GridFsStorage } = require("multer-gridfs-storage");
 const multer = require("multer");
 const Video = require("../models/Video");
 
@@ -35,7 +35,6 @@ const upload = multer({ storage });
 // Upload video to GridFS
 const uploadVid = async (req, res) => {
   try {
-    // Handle Multer upload
     upload.single("video")(req, res, async (err) => {
       if (err) {
         return res
@@ -49,7 +48,6 @@ const uploadVid = async (req, res) => {
           .json({ error: "No video file provided" });
       }
 
-      // Save metadata in the Video schema
       const { gender, uploadedBy } = req.body; // Example fields from request body
       const video = new Video({
         filename: req.file.filename, // Filename in GridFS
@@ -101,7 +99,6 @@ const streamVid = async (req, res) => {
         .json({ error: "GridFS not initialized" });
     }
 
-    // Find the file by filename
     gfs.files.findOne({ filename }, (err, file) => {
       if (!file || file.length === 0) {
         return res
@@ -109,14 +106,12 @@ const streamVid = async (req, res) => {
           .json({ error: "Video not found" });
       }
 
-      // Check if file is a video
       if (!file.contentType.startsWith("video/")) {
         return res
           .status(StatusCodes.BAD_REQUEST)
           .json({ error: "Not a video file" });
       }
 
-      // Stream the video
       const readStream = gfs.createReadStream(file.filename);
       res.set("Content-Type", file.contentType);
       readStream.pipe(res);
