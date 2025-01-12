@@ -3,17 +3,24 @@ const express = require("express");
 const axios = require("axios");
 require("dotenv").config();
 const { admin, db } = require("./firebaseAdmin");
+const connectDB = require("./db/connect");
 
 const app = express();
 const cors = require("cors");
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "http://codedlydating.com" }));
 
 // Dummy API homepage
 app.get("/", (req, res) => {
   res.status(200).json({ msg: "Codedly Dating" });
 });
+
+// Routers
+const uploadRouter = require("./routes/uploads");
+
+// Routes
+app.use("/api/video", uploadRouter);
 
 app.post("/api/verify-payment", async (req, res) => {
   const { reference, userId } = req.body;
@@ -112,6 +119,16 @@ app.post(
 );
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+const start = async () => {
+  try {
+    await connectDB(process.env.MONGO_URI);
+    console.log("Connected to DB");
+
+    app.listen(PORT, () => console.log(`Server listening ${PORT}`));
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+start();
