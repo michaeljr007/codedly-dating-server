@@ -9,18 +9,23 @@ const app = express();
 const cors = require("cors");
 
 app.use(express.json());
-app.use(cors({ origin: "http://codedlydating.com" }));
-
+app.use(
+  cors({
+    origin: "https://codedlydating.com", // Replace with your frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 // Dummy API homepage
 app.get("/", (req, res) => {
   res.status(200).json({ msg: "Codedly Dating" });
 });
 
-// Routers
-const uploadRouter = require("./routes/uploads");
+// // Routers
+// const uploadRouter = require("./routes/uploads");
 
-// Routes
-app.use("/api/video", uploadRouter);
+// // Routes
+// app.use("/api/video", uploadRouter);
 
 app.post("/api/verify-payment", async (req, res) => {
   const { reference, userId } = req.body;
